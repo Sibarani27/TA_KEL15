@@ -1,0 +1,83 @@
+{
+  "draf": true,
+  "catatan": "DRAF: isi daftar ini hanya kerangka dan belum diverifikasi. Dosis dan aturan pakai mengikuti label produk dan arahan penyuluh pertanian. Gunakan hanya produk yang terdaftar resmi.",
+  "obat": [
+    {
+      "nama": "Abamektin",
+      "jenis": "Insektisida",
+      "bahan_aktif": "Abamektin",
+      "merek": [],
+      "target": ["trips"],
+      "dosis": null,
+      "catatan": "Menyasar hama trips. Ikuti dosis dan jeda aplikasi pada label produk.",
+      "verifikasi": false,
+      "sumber": null
+    },
+    {
+      "nama": "Spinosad",
+      "jenis": "Insektisida",
+      "bahan_aktif": "Spinosad",
+      "merek": [],
+      "target": ["trips"],
+      "dosis": null,
+      "catatan": "Menyasar hama trips. Ikuti dosis dan jeda aplikasi pada label produk.",
+      "verifikasi": false,
+      "sumber": null
+    },
+    {
+      "nama": "Imidakloprid",
+      "jenis": "Insektisida",
+      "bahan_aktif": "Imidakloprid",
+      "merek": [],
+      "target": ["virus_kuning", "virus_keriting"],
+      "dosis": null,
+      "catatan": "Menyasar serangga pembawa virus (misalnya kutu kebul), bukan virusnya. Virus tidak bisa diobati, dan tanaman yang terserang berat biasanya dicabut agar tidak menular.",
+      "verifikasi": false,
+      "sumber": null
+    },
+    {
+      "nama": "Mankozeb",
+      "jenis": "Fungisida",
+      "bahan_aktif": "Mankozeb",
+      "merek": [],
+      "target": ["antraknosa"],
+      "dosis": null,
+      "catatan": "Untuk pencegahan dan pengendalian jamur penyebab antraknosa. Ikuti dosis dan jeda panen pada label produk.",
+      "verifikasi": false,
+      "sumber": null
+    },
+    {
+      "nama": "Azoksistrobin",
+      "jenis": "Fungisida",
+      "bahan_aktif": "Azoksistrobin",
+      "merek": [],
+      "target": ["antraknosa"],
+      "dosis": null,
+      "catatan": "Untuk pengendalian jamur penyebab antraknosa. Ikuti dosis dan jeda panen pada label produk.",
+      "verifikasi": false,
+      "sumber": null
+    },
+    {
+      "nama": "Trichoderma",
+      "jenis": "Agens hayati",
+      "bahan_aktif": null,
+      "merek": [],
+      "target": ["layu_fusarium"],
+      "dosis": null,
+      "catatan": "Membantu menekan jamur tular tanah, biasanya dicampur ke media tanam sebelum tanam. Tidak menyembuhkan tanaman yang sudah layu.",
+      "verifikasi": false,
+      "sumber": null
+    },
+    {
+      "nama": "Rotasi tanaman dan drainase",
+      "jenis": "Budidaya",
+      "bahan_aktif": null,
+      "merek": [],
+      "target": ["layu_fusarium"],
+      "dosis": null,
+      "catatan": "Hindari genangan air dan jangan menanam cabai terus-menerus di lahan yang sama. Cabut dan jauhkan tanaman yang terserang.",
+      "verifikasi": false,
+      "sumber": null
+    }
+  ]
+}

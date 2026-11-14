@@ -1,0 +1,857 @@
+import 'dart:typed_data';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:ultralytics_yolo/ultralytics_yolo.dart';
+
+// ---------------------------------------------------------------------------
+// Warna
+// ---------------------------------------------------------------------------
+const _lime = Color(0xFFCBF44B);
+const _hitam = Color(0xFF121712);
+const _kertas = Color(0xFFF4F6EF);
+const _daun = Color(0xFF2F5D3A);
+const _cabai = Color(0xFFC62F2A);
+
+// Sesuaikan dengan lokasi model di assets/models/
+const _jalurModel = 'assets/models/model_cabai.tflite';
+
+void main() => runApp(const AplikasiCabai());
+
+class AplikasiCabai extends StatelessWidget {
+  const AplikasiCabai({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Cek Cabai',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: _daun),
+        scaffoldBackgroundColor: _kertas,
+      ),
+      home: const HalamanSambutan(),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Data penyakit (offline). Teks ini DRAF: minta ahli memeriksanya.
+// Kunci harus sama dengan nama kelas di data.yaml (huruf kecil, pakai _).
+// ---------------------------------------------------------------------------
+class Penyakit {
+  final String nama;
+  final String ciri;
+  final String saran;
+  final bool sehat;
+  const Penyakit(this.nama, this.ciri, this.saran, {this.sehat = false});
+}
+
+const kamusPenyakit = <String, Penyakit>{
+  'daun_sehat': Penyakit(
+    'Daun sehat',
+    'Warna hijau merata, permukaan rata, tanpa bercak atau gulungan.',
+    'Lanjutkan perawatan rutin dan periksa tanaman secara berkala.',
+    sehat: true,
+  ),
+  'trips': Penyakit(
+    'Serangan trips',
+    'Daun tampak keperakan atau kecokelatan, tepi menggulung ke atas, pucuk mengerut.',
+    'Periksa sisi bawah daun dan pucuk. Konsultasikan cara pengendalian ke penyuluh pertanian.',
+  ),
+  'layu_fusarium': Penyakit(
+    'Layu Fusarium',
+    'Tanaman layu, daun menguning mulai dari bagian bawah, pangkal batang bisa kecokelatan.',
+    'Pisahkan tanaman yang terserang, hindari genangan air, dan konsultasikan ke penyuluh.',
+  ),
+  'antraknosa': Penyakit(
+    'Antraknosa',
+    'Bercak cekung cokelat sampai kehitaman, paling sering terlihat pada buah.',
+    'Buang bagian yang terserang, jaga kebersihan lahan, dan kurangi kelembapan berlebih.',
+  ),
+  'virus_keriting': Penyakit(
+    'Virus keriting',
+    'Daun menggulung, mengerut, bergelombang, atau mengecil.',
+    'Pisahkan tanaman yang terserang berat dan konsultasikan pengendalian ke penyuluh.',
+  ),
+  'virus_kuning': Penyakit(
+    'Virus kuning',
+    'Daun menguning atau pucat, sering berpola belang.',
+    'Pisahkan tanaman yang terserang berat dan konsultasikan pengendalian ke penyuluh.',
+  ),
+};
+
+String _kunci(String s) =>
+    s.trim().toLowerCase().replaceAll(RegExp(r'[\s\-]+'), '_');
+
+class Deteksi {
+  final String nama;
+  final double skor;
+  const Deteksi(this.nama, this.skor);
+}
+
+// ===========================================================================
+// LAYAR 1: Sambutan
+// ===========================================================================
+class HalamanSambutan extends StatelessWidget {
+  const HalamanSambutan({super.key});
+
+  void _mulai(BuildContext context) {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const HalamanDashboard()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _lime,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.eco, color: _hitam),
+                  SizedBox(width: 8),
+                  Text(
+                    'Cek Cabai',
+                    style: TextStyle(
+                      color: _hitam,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+              const Expanded(child: Center(child: _Ilustrasi())),
+              const Text(
+                'Deteksi penyakit cabai langsung dari HP',
+                style: TextStyle(
+                  color: _hitam,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w800,
+                  height: 1.1,
+                  letterSpacing: -0.8,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Foto daun, lihat nama penyakitnya dan saran awalnya. Semua berjalan tanpa internet.',
+                style: TextStyle(
+                  color: _hitam.withValues(alpha: 0.75),
+                  fontSize: 15,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Material(
+                color: _hitam,
+                borderRadius: BorderRadius.circular(40),
+                child: InkWell(
+                  onTap: () => _mulai(context),
+                  borderRadius: BorderRadius.circular(40),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 8, 8, 8),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'Mulai',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: const BoxDecoration(
+                            color: _lime,
+                            shape: BoxShape.circle,
+                          ),
+                          child:
+                              const Icon(Icons.arrow_forward, color: _hitam),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Ilustrasi sederhana dari bentuk dasar (tanpa file gambar)
+class _Ilustrasi extends StatelessWidget {
+  const _Ilustrasi();
+
+  Widget _label(String teks, Color titik, {bool gelap = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: gelap ? _hitam : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: titik, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            teks,
+            style: TextStyle(
+              color: gelap ? Colors.white : _hitam,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 300,
+      height: 300,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 280,
+            height: 280,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.35),
+              shape: BoxShape.circle,
+            ),
+          ),
+          Container(
+            width: 190,
+            height: 190,
+            decoration: const BoxDecoration(
+              color: _hitam,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.eco, size: 110, color: _lime),
+          ),
+          Positioned(
+            top: 24,
+            right: 0,
+            child: _label('Daun sehat 96%', _daun),
+          ),
+          Positioned(
+            bottom: 28,
+            left: 0,
+            child: _label('Antraknosa 88%', _cabai, gelap: true),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// LAYAR 2: Dashboard
+// ===========================================================================
+class HalamanDashboard extends StatefulWidget {
+  const HalamanDashboard({super.key});
+
+  @override
+  State<HalamanDashboard> createState() => _HalamanDashboardState();
+}
+
+class _HalamanDashboardState extends State<HalamanDashboard> {
+  final _yolo = YOLO(
+    modelPath: _jalurModel,
+    // Aktifkan jika task tidak terbaca otomatis:
+    // task: YOLOTask.segment,
+  );
+  final _picker = ImagePicker();
+
+  bool _modelSiap = false;
+  bool _modelGagal = false;
+  bool _sibuk = false;
+  bool _sudahPeriksa = false;
+  String? _pesan;
+  Uint8List? _gambar;
+  Uint8List? _gambarAnotasi;
+  List<Deteksi> _hasil = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _muatModel();
+  }
+
+  Future<void> _muatModel() async {
+    try {
+      await _yolo.loadModel();
+      if (mounted) setState(() => _modelSiap = true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _modelGagal = true;
+          _pesan = 'Model gagal dimuat: $e';
+        });
+      }
+    }
+  }
+
+  // Pembacaan hasil dibuat defensif karena struktur field belum diverifikasi.
+  // Lihat log "Hasil mentah", lalu sesuaikan jika perlu.
+  List<Deteksi> _baca(dynamic out) {
+    final daftar = <Deteksi>[];
+    if (out is Map && out['boxes'] is List) {
+      for (final b in out['boxes'] as List) {
+        if (b is Map) {
+          final nama =
+              (b['class'] ?? b['className'] ?? b['label'] ?? '').toString();
+          final skor = (b['confidence'] as num?)?.toDouble() ?? 0.0;
+          if (nama.isNotEmpty) daftar.add(Deteksi(nama, skor));
+        }
+      }
+    }
+    daftar.sort((a, b) => b.skor.compareTo(a.skor));
+    return daftar;
+  }
+
+  Future<void> _periksa(ImageSource sumber) async {
+    try {
+      final file = await _picker.pickImage(source: sumber, maxWidth: 1280);
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+
+      setState(() {
+        _gambar = bytes;
+        _gambarAnotasi = null;
+        _hasil = [];
+        _pesan = null;
+        _sudahPeriksa = false;
+        _sibuk = true;
+      });
+
+      final dynamic out = await _yolo.predict(bytes);
+      debugPrint('Hasil mentah: $out');
+
+      if (!mounted) return;
+      setState(() {
+        _hasil = _baca(out);
+        _gambarAnotasi = (out is Map && out['annotatedImage'] is Uint8List)
+            ? out['annotatedImage'] as Uint8List
+            : null;
+        _sudahPeriksa = true;
+        _sibuk = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _pesan = 'Foto tidak bisa diproses: $e';
+        _sibuk = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _header(),
+              const SizedBox(height: 18),
+              _kartuPeriksa(),
+              const SizedBox(height: 14),
+              _tombolAksi(),
+              const SizedBox(height: 24),
+              _bagianHasil(),
+              if (_sudahPeriksa || _pesan != null) const SizedBox(height: 28),
+              _daftarPenyakit(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---- Header ----
+  Widget _header() {
+    final warna =
+        _modelGagal ? _cabai : (_modelSiap ? _daun : Colors.orange.shade800);
+    final label = _modelGagal
+        ? 'Model gagal'
+        : (_modelSiap ? 'Model siap' : 'Memuat model');
+    return Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: const BoxDecoration(
+            color: _hitam,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.eco, color: _lime),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Selamat datang',
+              style: TextStyle(
+                color: _hitam.withValues(alpha: 0.6),
+                fontSize: 13,
+              ),
+            ),
+            const Text(
+              'Cek daun cabai',
+              style: TextStyle(
+                color: _hitam,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ],
+        ),
+        const Spacer(),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration:
+                    BoxDecoration(color: warna, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: warna,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ---- Kartu hitam berisi bingkai foto ----
+  Widget _kartuPeriksa() {
+    final tampil = _gambarAnotasi ?? _gambar;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _hitam,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AspectRatio(
+            aspectRatio: 4 / 3,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(color: const Color(0xFF1E261E)),
+                  if (tampil != null)
+                    Image.memory(tampil, fit: BoxFit.contain)
+                  else
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.eco_outlined,
+                            size: 48,
+                            color: _lime.withValues(alpha: 0.6),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Belum ada foto',
+                            style: TextStyle(color: Colors.white60),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(painter: _SudutBingkai(_lime)),
+                    ),
+                  ),
+                  if (_sibuk)
+                    Container(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      child: const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(color: _lime),
+                            SizedBox(height: 12),
+                            Text(
+                              'Memeriksa daun...',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              'Foto satu daun yang terlihat jelas. Pemeriksaan berjalan tanpa internet.',
+              style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---- Tombol aksi ----
+  Widget _tombolAksi() {
+    final aktif = _modelSiap && !_sibuk;
+    return Row(
+      children: [
+        Expanded(
+          child: FilledButton.icon(
+            onPressed: aktif ? () => _periksa(ImageSource.camera) : null,
+            icon: const Icon(Icons.photo_camera_outlined),
+            label: const Text('Ambil foto'),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(54),
+              backgroundColor: _lime,
+              foregroundColor: _hitam,
+              shape: const StadiumBorder(),
+              textStyle: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: aktif ? () => _periksa(ImageSource.gallery) : null,
+            icon: const Icon(Icons.photo_library_outlined),
+            label: const Text('Dari galeri'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(54),
+              foregroundColor: _hitam,
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: _hitam, width: 1.2),
+              shape: const StadiumBorder(),
+              textStyle: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ---- Hasil ----
+  Widget _bagianHasil() {
+    if (_pesan != null) return _kartuPesan(_pesan!, _cabai);
+    if (!_sudahPeriksa) return const SizedBox.shrink();
+
+    if (_hasil.isEmpty) {
+      return _kartuPesan(
+        'Tidak ada daun yang terdeteksi. Coba foto lebih dekat, dengan cahaya cukup dan daun memenuhi bingkai.',
+        Colors.orange.shade800,
+      );
+    }
+
+    final utama = _hasil.first;
+    final info = kamusPenyakit[_kunci(utama.nama)];
+    final lainnya = _hasil.skip(1).take(3).toList();
+
+    if (info == null) {
+      return _kartuPesan(
+        'Kelas "${utama.nama}" belum dikenal aplikasi. Ini wajar selama model masih bawaan, bukan model cabai.',
+        Colors.orange.shade800,
+      );
+    }
+
+    final warna = info.sehat ? _daun : _cabai;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: warna.withValues(alpha: 0.35), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            info.nama,
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: warna,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: utama.skor.clamp(0.0, 1.0),
+                    minHeight: 8,
+                    color: warna,
+                    backgroundColor: warna.withValues(alpha: 0.15),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '${(utama.skor * 100).toStringAsFixed(0)}% yakin',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _baris('Ciri yang tampak', info.ciri),
+          const SizedBox(height: 14),
+          _baris('Yang bisa dilakukan', info.saran),
+          if (lainnya.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Kemungkinan lain: ${lainnya.map((d) => '${kamusPenyakit[_kunci(d.nama)]?.nama ?? d.nama} (${(d.skor * 100).toStringAsFixed(0)}%)').join(', ')}',
+              style: TextStyle(
+                color: _hitam.withValues(alpha: 0.65),
+                fontSize: 13,
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Text(
+            'Hasil ini bantuan awal, bukan diagnosis pasti. Pastikan ke penyuluh pertanian sebelum mengambil tindakan.',
+            style: TextStyle(
+              color: _hitam.withValues(alpha: 0.55),
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _baris(String judul, String isi) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          judul,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: _hitam,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          isi,
+          style: TextStyle(
+            color: _hitam.withValues(alpha: 0.85),
+            height: 1.4,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _kartuPesan(String isi, Color warna) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: warna.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: warna.withValues(alpha: 0.4)),
+      ),
+      child: Text(isi, style: const TextStyle(color: _hitam, height: 1.4)),
+    );
+  }
+
+  // ---- Daftar penyakit yang dikenali ----
+  Widget _daftarPenyakit() {
+    final daftar = kamusPenyakit.values.toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Yang dikenali aplikasi',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: _hitam,
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 44,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: daftar.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, i) {
+              final p = daftar[i];
+              return Material(
+                color: Colors.white,
+                shape: const StadiumBorder(
+                  side: BorderSide(color: Color(0x22000000)),
+                ),
+                child: InkWell(
+                  customBorder: const StadiumBorder(),
+                  onTap: () => _bukaInfo(p),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: p.sehat ? _daun : _cabai,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          p.nama,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _bukaInfo(Penyakit p) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              p.nama,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: p.sehat ? _daun : _cabai,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _baris('Ciri yang tampak', p.ciri),
+            const SizedBox(height: 14),
+            _baris('Yang bisa dilakukan', p.saran),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Sudut bingkai ala jendela bidik kamera
+class _SudutBingkai extends CustomPainter {
+  final Color warna;
+  _SudutBingkai(this.warna);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cat = Paint()
+      ..color = warna
+      ..strokeWidth = 4
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    const m = 14.0;
+    const l = 28.0;
+    final w = size.width;
+    final h = size.height;
+
+    canvas.drawPath(
+        Path()
+          ..moveTo(m, m + l)
+          ..lineTo(m, m)
+          ..lineTo(m + l, m),
+        cat);
+    canvas.drawPath(
+        Path()
+          ..moveTo(w - m - l, m)
+          ..lineTo(w - m, m)
+          ..lineTo(w - m, m + l),
+        cat);
+    canvas.drawPath(
+        Path()
+          ..moveTo(m, h - m - l)
+          ..lineTo(m, h - m)
+          ..lineTo(m + l, h - m),
+        cat);
+    canvas.drawPath(
+        Path()
+          ..moveTo(w - m - l, h - m)
+          ..lineTo(w - m, h - m)
+          ..lineTo(w - m, h - m - l),
+        cat);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SudutBingkai old) => old.warna != warna;
+}
