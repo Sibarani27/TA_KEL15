@@ -4,8 +4,11 @@ import 'penyakit.dart';
 
 const jalurModel = 'assets/models/model_cabai.tflite';
 
-/// Di bawah angka ini aplikasi menjawab "belum yakin", bukan memaksa menjawab.
-const ambangYakin = 0.4;
+/// Di bawah angka ini hasil dibuang: dianggap bukan tanaman cabai atau tidak jelas.
+const ambangMinimal = 0.35;
+
+/// Di antara ambangMinimal dan angka ini aplikasi menjawab "belum yakin".
+const ambangYakin = 0.5;
 
 class Deteksi {
   final String nama;
@@ -58,6 +61,11 @@ HasilFoto bacaHasilFoto(Map<String, dynamic> out) {
     gambar = out['annotatedImage'] as Uint8List;
   }
   ms ??= (out['processingTimeMs'] as num?)?.toDouble();
+  
+  // Buang hasil yang lemah dan kelas yang tidak dikenal aplikasi
+  daftar = daftar
+      .where((d) => d.skor >= ambangMinimal && d.info != null)
+      .toList();
 
   daftar.sort((a, b) => b.skor.compareTo(a.skor));
   return HasilFoto(daftar, gambar, ms);

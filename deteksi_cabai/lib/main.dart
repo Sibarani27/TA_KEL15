@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'tema.dart';
-import 'halaman/cangkang.dart';
+
 import 'data/riwayat.dart';
+import 'halaman/sambutan.dart'; 
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +36,7 @@ class AplikasiCabai extends StatelessWidget {
               child: child!,
             );
           },
-          home: const Cangkang(),
+                    home: const Sambutan(),
         );
       },
     );

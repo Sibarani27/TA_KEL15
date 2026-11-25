@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Warna merek (sama di kedua mode)
 class Warna {
-  static const prussian = Color(0xFF003151);
-  static const emas = Color(0xFFFFD700);
+  static const ungu = Color(0xFF6B46D9);
+  static const unguTua = Color(0xFF4B2FB0);
+  static const unguGelap = Color(0xFF1E1635);
+  static const unguMuda = Color(0xFFE4DAFF);
+
+  // Nama lama dipertahankan supaya file lain tidak perlu diubah.
+  static const prussian = ungu;
+  static const emas = unguMuda;
 }
 
-// Palet yang berbeda per mode. Pakai lewat: context.palet.kartu
 @immutable
 class Palet extends ThemeExtension<Palet> {
   final Color latar;
@@ -16,6 +20,7 @@ class Palet extends ThemeExtension<Palet> {
   final Color teks;
   final Color teksRedup;
   final Color aksen;
+  final Color aksenMuda;
   final Color hijau;
   final Color merah;
 
@@ -26,30 +31,33 @@ class Palet extends ThemeExtension<Palet> {
     required this.teks,
     required this.teksRedup,
     required this.aksen,
+    required this.aksenMuda,
     required this.hijau,
     required this.merah,
   });
 
   static const gelap = Palet(
-    latar: Color(0xFF050B14),
-    kartu: Color(0xFF0E1826),
-    garis: Color(0xFF1C2B3D),
-    teks: Color(0xFFE8EEF5),
-    teksRedup: Color(0xFF8A9BB0),
-    aksen: Color(0xFFFFD700),
-    hijau: Color(0xFF10B981),
-    merah: Color(0xFFEF4444),
+    latar: Color(0xFF120D24),
+    kartu: Color(0xFF1D1638),
+    garis: Color(0xFF2E2552),
+    teks: Color(0xFFF1EBFF),
+    teksRedup: Color(0xFFA89FC8),
+    aksen: Color(0xFFB7A1FF),
+    aksenMuda: Color(0xFF2A2150),
+    hijau: Color(0xFF34D399),
+    merah: Color(0xFFF87171),
   );
 
   static const terang = Palet(
-    latar: Color(0xFFF2F5F9),
+    latar: Color(0xFFF7F3FF),
     kartu: Color(0xFFFFFFFF),
-    garis: Color(0xFFDDE4ED),
-    teks: Color(0xFF0F1B2A),
-    teksRedup: Color(0xFF5A6A7E),
-    aksen: Color(0xFF003151),
-    hijau: Color(0xFF047857),
-    merah: Color(0xFFDC2626),
+    garis: Color(0xFFE7DFFA),
+    teks: Color(0xFF231B3D),
+    teksRedup: Color(0xFF5F5780),
+    aksen: Color(0xFF6B46D9),
+    aksenMuda: Color(0xFFEFE8FF),
+    hijau: Color(0xFF15803D),
+    merah: Color(0xFFB42318),
   );
 
   @override
@@ -60,6 +68,7 @@ class Palet extends ThemeExtension<Palet> {
     Color? teks,
     Color? teksRedup,
     Color? aksen,
+    Color? aksenMuda,
     Color? hijau,
     Color? merah,
   }) {
@@ -70,6 +79,7 @@ class Palet extends ThemeExtension<Palet> {
       teks: teks ?? this.teks,
       teksRedup: teksRedup ?? this.teksRedup,
       aksen: aksen ?? this.aksen,
+      aksenMuda: aksenMuda ?? this.aksenMuda,
       hijau: hijau ?? this.hijau,
       merah: merah ?? this.merah,
     );
@@ -85,6 +95,7 @@ class Palet extends ThemeExtension<Palet> {
       teks: Color.lerp(teks, other.teks, t)!,
       teksRedup: Color.lerp(teksRedup, other.teksRedup, t)!,
       aksen: Color.lerp(aksen, other.aksen, t)!,
+      aksenMuda: Color.lerp(aksenMuda, other.aksenMuda, t)!,
       hijau: Color.lerp(hijau, other.hijau, t)!,
       merah: Color.lerp(merah, other.merah, t)!,
     );
@@ -95,10 +106,23 @@ extension PaletKonteks on BuildContext {
   Palet get palet => Theme.of(this).extension<Palet>()!;
 }
 
+// Gradasi ungu untuk header Home dan Camera
+LinearGradient gradienUngu(BuildContext c) {
+  final gelap = Theme.of(c).brightness == Brightness.dark;
+  return LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: gelap
+        ? const [Color(0xFF4B2FB0), Color(0xFF2A1D5E)]
+        : const [Color(0xFF7C5CE6), Color(0xFF5B3BC4)],
+  );
+}
+
 ThemeData buatTema(Brightness b) {
-  final p = b == Brightness.dark ? Palet.gelap : Palet.terang;
+  final gelap = b == Brightness.dark;
+  final p = gelap ? Palet.gelap : Palet.terang;
   final skema = ColorScheme.fromSeed(
-    seedColor: Warna.prussian,
+    seedColor: Warna.ungu,
     brightness: b,
   ).copyWith(primary: p.aksen, surface: p.kartu);
   final dasar = ThemeData(brightness: b).textTheme;
@@ -113,7 +137,7 @@ ThemeData buatTema(Brightness b) {
     bottomSheetTheme: BottomSheetThemeData(backgroundColor: p.kartu),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: p.kartu,
-      indicatorColor: p.aksen.withValues(alpha: 0.14),
+      indicatorColor: p.aksen.withValues(alpha: 0.16),
       labelTextStyle: WidgetStateProperty.resolveWith(
         (s) => TextStyle(
           fontSize: 12,
@@ -125,6 +149,19 @@ ThemeData buatTema(Brightness b) {
         (s) => IconThemeData(
           color: s.contains(WidgetState.selected) ? p.aksen : p.teksRedup,
         ),
+      ),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected) ? p.aksen : p.aksenMuda,
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? (gelap ? Colors.black : Colors.white)
+              : p.teksRedup,
+        ),
+        side: const WidgetStatePropertyAll(BorderSide.none),
       ),
     ),
   );

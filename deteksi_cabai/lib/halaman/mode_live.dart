@@ -4,6 +4,7 @@ import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 import '../data/model_cabai.dart';
 import '../tema.dart';
 import 'komponen.dart';
+import '../data/penyakit.dart';
 
 class ModeLive extends StatefulWidget {
   const ModeLive({super.key});
@@ -53,9 +54,16 @@ class _ModeLiveState extends State<ModeLive> {
   void _onResult(List<YOLOResult> hasil) {
     _terakhirMasuk = DateTime.now();
 
+        // Hanya hasil yang cukup yakin dan kelasnya dikenal yang dihitung
+    final layak = hasil.where(
+      (r) =>
+          r.confidence >= ambangMinimal &&
+          kamusPenyakit[kunciKelas(r.className)] != null,
+    );
+
     Deteksi? atas;
-    if (hasil.isNotEmpty) {
-      final t = hasil.reduce((a, b) => a.confidence >= b.confidence ? a : b);
+    if (layak.isNotEmpty) {
+      final t = layak.reduce((a, b) => a.confidence >= b.confidence ? a : b);
       atas = Deteksi(t.className, t.confidence);
     }
     _jendela.add(atas);
@@ -110,6 +118,7 @@ class _ModeLiveState extends State<ModeLive> {
           isi: YOLOView(
             modelPath: jalurModel,
             controller: _kontrol,
+            confidenceThreshold: ambangMinimal,
             onResult: _onResult,
             onPerformanceMetrics: (m) {
               _ms.value = m.processingTimeMs;

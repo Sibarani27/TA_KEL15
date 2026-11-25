@@ -65,7 +65,7 @@ class _ModeFotoState extends State<ModeFoto> {
         _sibuk = true;
       });
 
-      final out = await _yolo.predict(bytes, confidenceThreshold: 0.25);
+      final out = await _yolo.predict(bytes, confidenceThreshold: ambangMinimal);
       debugPrint('Hasil mentah: $out');
 
       if (!mounted) return;
@@ -85,7 +85,12 @@ class _ModeFotoState extends State<ModeFoto> {
   Future<void> _simpan() async {
     final hasil = _hasil;
     final foto = _gambar;
-    if (hasil == null || foto == null || hasil.deteksi.isEmpty) return;
+        if (hasil == null ||
+        foto == null ||
+        hasil.deteksi.isEmpty ||
+        hasil.deteksi.first.skor < ambangYakin) {
+      return;
+    }
 
     final lahan = await mintaNamaLahan(context, riwayat.lahanTerakhir);
     if (lahan == null || !mounted) return;
@@ -111,7 +116,9 @@ class _ModeFotoState extends State<ModeFoto> {
     final tampil = _hasil?.gambarAnotasi ?? _gambar;
     final aktif = _siap && !_sibuk;
     final gagal = !_siap && _pesan != null;
-    final bisaSimpan = _hasil != null && _hasil!.deteksi.isNotEmpty;
+    final bisaSimpan = _hasil != null &&
+        _hasil!.deteksi.isNotEmpty &&
+        _hasil!.deteksi.first.skor >= ambangYakin;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -99,7 +99,7 @@ class BingkaiBidik extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Container(color: const Color(0xFF0A1118)),
+            Container(color: const Color(0xFF1E1635)),
             isi,
             Positioned.fill(
               child: IgnorePointer(
@@ -208,14 +208,14 @@ class KartuHasil extends StatelessWidget {
 
     if (info == null) {
       return KartuPesan(
-        'Kelas "${utama.nama}" belum dikenal aplikasi. Cek apakah nama kelasnya sama dengan kunci di kamus penyakit.',
+        'Tidak ada daun cabai yang terdeteksi. Pastikan yang difoto adalah daun atau buah cabai, dekat, dan cahayanya cukup.',
         warna: Colors.orange.shade700,
       );
     }
 
     if (utama.skor < ambangYakin) {
       return KartuPesan(
-        'Belum yakin. Dugaan terdekat: ${info.nama} ($persen). Coba foto lebih dekat dengan cahaya yang cukup.',
+        'Tidak ada daun cabai yang terdeteksi. Pastikan yang difoto adalah daun atau buah cabai, dekat, dan cahayanya cukup.',
         warna: Colors.orange.shade700,
       );
     }

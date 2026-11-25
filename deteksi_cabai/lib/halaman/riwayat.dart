@@ -270,7 +270,7 @@ class _Detail extends StatelessWidget {
               child: Container(
                 height: 260,
                 width: double.infinity,
-                color: const Color(0xFF0A1118),
+                color: const Color(0xFF1E1635),
                 child: Image.file(
                   File(data.fotoPath!),
                   fit: BoxFit.contain,
