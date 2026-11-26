@@ -5,7 +5,8 @@ import '../tema.dart';
 import 'komponen.dart';
 
 class HalamanObat extends StatefulWidget {
-  const HalamanObat({super.key});
+  final String? filterAwal; // kunci penyakit dari Home, null = semua
+  const HalamanObat({super.key, this.filterAwal});
 
   @override
   State<HalamanObat> createState() => _HalamanObatState();
@@ -14,7 +15,7 @@ class HalamanObat extends StatefulWidget {
 class _HalamanObatState extends State<HalamanObat> {
   late final Future<DaftarObat> _data = muatObat();
   final _cari = TextEditingController();
-  String? _filter; // null = semua penyakit
+    late String? _filter = widget.filterAwal; // null = semua penyakit
 
   @override
   void dispose() {

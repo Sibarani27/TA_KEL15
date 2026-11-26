@@ -6,22 +6,44 @@ import '../tema.dart';
 
 class HalamanHome extends StatelessWidget {
   final void Function(int) pindahTab;
-  const HalamanHome({super.key, required this.pindahTab});
+  final void Function(String) bukaObat; // buka tab Obat dengan filter penyakit
+  const HalamanHome({
+    super.key,
+    required this.pindahTab,
+    required this.bukaObat,
+  });
 
-  static const _kunciInfo = [
+  // Urutan kartu penyakit di Home
+  static const _urutan = [
     'antraknosa',
-    'virus_keriting',
+    'layu_fusarium',
+    'trips',
     'virus_kuning',
-    'daun_sehat',
+    'virus_keriting',
   ];
+
+  // ====================================================================
+  // >>> TEMPAT MENAMBAHKAN GAMBAR KARTU PENYAKIT (1 dari 2) <<<
+  // Isi jalur foto tiap penyakit di bawah ini.
+  // 1. Taruh file di folder:  assets/images/penyakit/
+  // 2. Daftarkan di pubspec.yaml di bagian assets:
+  //      - assets/images/penyakit/
+  // 3. Ganti null dengan jalurnya, contoh:
+  //      'antraknosa': 'assets/images/penyakit/antraknosa.jpg',
+  // Kalau masih null, kartu menampilkan ikon seperti sekarang.
+  // ====================================================================
+  static const Map<String, String?> _gambarPenyakit = {
+    'antraknosa': null,
+    'layu_fusarium': null,
+    'trips': null,
+    'virus_kuning': null,
+    'virus_keriting': null,
+  };
 
   @override
   Widget build(BuildContext context) {
     final p = context.palet;
-    final info = [
-      for (final k in _kunciInfo)
-        if (kamusPenyakit[k] != null) kamusPenyakit[k]!,
-    ];
+    
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(
@@ -64,17 +86,31 @@ class HalamanHome extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 1.15,
-                    children: [
-                      for (final i in info)
-                        _KartuPenyakit(info: i, onTap: () => pindahTab(2)),
-                    ],
+                    LayoutBuilder(
+                    builder: (context, c) {
+                      final setengah = (c.maxWidth - 12) / 2;
+                      final ganjil = _urutan.length.isOdd;
+                      return Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          for (var i = 0; i < _urutan.length; i++)
+                            if (kamusPenyakit[_urutan[i]] != null)
+                              SizedBox(
+                                // kartu terakhir melebar penuh bila jumlahnya ganjil
+                                width: (ganjil && i == _urutan.length - 1)
+                                    ? c.maxWidth
+                                    : setengah,
+                                height: 140,
+                                child: _KartuPenyakit(
+                                  info: kamusPenyakit[_urutan[i]]!,
+                                  gambar: _gambarPenyakit[_urutan[i]],
+                                  onTap: () => bukaObat(_urutan[i]),
+                                ),
+                              ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 18),
                   _kartuTips(context),
@@ -399,13 +435,27 @@ class _Gelombang extends CustomClipper<Path> {
 
 class _KartuPenyakit extends StatelessWidget {
   final Penyakit info;
+  final String? gambar;
   final VoidCallback onTap;
-  const _KartuPenyakit({required this.info, required this.onTap});
+  const _KartuPenyakit({
+    required this.info,
+    required this.gambar,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final p = context.palet;
     final warna = info.sehat ? p.hijau : p.merah;
+
+    final ikon = Center(
+      child: Icon(
+        info.sehat ? Icons.eco_outlined : Icons.warning_amber_rounded,
+        color: warna,
+        size: 36,
+      ),
+    );
+
     return Material(
       color: p.kartu,
       borderRadius: BorderRadius.circular(20),
@@ -421,16 +471,25 @@ class _KartuPenyakit extends StatelessWidget {
           child: Column(
             children: [
               Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: double.infinity,
                     color: warna.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    info.sehat ? Icons.eco_outlined : Icons.warning_amber_rounded,
-                    color: warna,
-                    size: 36,
+                    // ==================================================
+                    // >>> TEMPAT GAMBAR KARTU (2 dari 2) <<<
+                    // Gambar tampil otomatis kalau jalurnya sudah diisi
+                    // di _gambarPenyakit (bagian atas file ini).
+                    // Tidak perlu mengubah apa pun di sini.
+                    // ==================================================
+                    child: gambar == null
+                        ? ikon
+                        : Image.asset(
+                            gambar!,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            errorBuilder: (_, __, ___) => ikon,
+                          ),
                   ),
                 ),
               ),
@@ -453,6 +512,7 @@ class _KartuPenyakit extends StatelessWidget {
     );
   }
 }
+
 
 class _Statistik extends StatelessWidget {
   final String judul;

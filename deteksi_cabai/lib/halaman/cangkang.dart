@@ -13,15 +13,26 @@ class Cangkang extends StatefulWidget {
 
 class _CangkangState extends State<Cangkang> {
   int _tab = 0;
+  String? _filterObat; // kunci penyakit yang dibawa dari Home, null = semua
 
-  void _pindah(int i) => setState(() => _tab = i);
+  // Pindah tab biasa: filter obat dikosongkan
+  void _pindah(int i) => setState(() {
+        _tab = i;
+        _filterObat = null;
+      });
+
+  // Dari kartu penyakit di Home: buka tab Obat dengan filter penyakit itu
+  void _bukaObat(String kunci) => setState(() {
+        _tab = 2;
+        _filterObat = kunci;
+      });
 
   @override
   Widget build(BuildContext context) {
     final halaman = <Widget>[
-      HalamanHome(pindahTab: _pindah),
+      HalamanHome(pindahTab: _pindah, bukaObat: _bukaObat),
       const HalamanCamera(),
-      const HalamanObat(),
+      HalamanObat(key: ValueKey(_filterObat), filterAwal: _filterObat),
       const HalamanRiwayat(),
     ];
 
